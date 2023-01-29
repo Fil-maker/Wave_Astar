@@ -86,6 +86,7 @@ class Maze:
         self.margin = 1
         self.start_color = (0x00, 0xF2, 0x60)
         self.end_color = (0x05, 0x75, 0xE6)
+        self.working: bool = False
         self.height, self.width, self.wall_chance = height, width, wall_chance
         if self.height % 2 == 0:
             self.height += 1
@@ -203,12 +204,13 @@ class Maze:
                 self.clear_cell(Point(int(pr_row), int(pr_col)))
 
     def next_step(self):
-        if not self.is_path_found:
-            self.find_path()
-        elif not self.path_complete:
-            self.backtrack_path()
-        else:
-            self.shift_gradient()
+        if self.working:
+            if not self.is_path_found:
+                self.find_path()
+            elif not self.path_complete:
+                self.backtrack_path()
+            else:
+                self.shift_gradient()
 
     def find_path(self):
         if self.closest is not None:
