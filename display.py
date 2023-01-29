@@ -2,6 +2,7 @@ import pygame
 from test import Maze, Point, Marker
 
 WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
 BLUE = (0, 0, 255)
 
 
@@ -27,7 +28,9 @@ def paint(screen: pygame.Surface, objects):
 
 
 def main():
-    maze = Maze(5, 5)
+    WIDTH = 15
+    HEIGHT = 15
+    maze = Maze(2 * WIDTH + 1, 2 * HEIGHT + 1)
     obj = ScreenObject(20, 20, 560, 560, maze)
     size = width, height = 800, 600
     FPS = 60

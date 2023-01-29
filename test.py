@@ -2,6 +2,7 @@ from __future__ import annotations
 import pygame
 import random
 from enum import Enum
+from eller_algorithm import generate_labyrinth
 
 
 class Marker(Enum):
@@ -39,6 +40,9 @@ class Point:
                     neighbors.append(Point(self.row + d_row, self.col + d_col))
         return neighbors
 
+    def add_marker(self, marker: Marker) -> None:
+        self.markers.append(marker)
+
 
 class PathPoint:
     def __init__(self, point: Point, val: int, parent: PathPoint = None):
@@ -62,17 +66,21 @@ def get_closest(points: list[PathPoint], goal: Point) -> PathPoint:
 
 
 class Maze:
-    def __init__(self, height, width, wall_chance=0.2):
+    def __init__(self, height, width, wall_chance=0.2): # height and width should be ONLY odd
         self.last_changed = None
         self.margin = 1
         self.height, self.width, self.wall_chance = height, width, wall_chance
+        if self.height % 2 == 0:
+            self.height += 1
+        if self.width % 2 == 0:
+            self.width += 1
         self.map: list[list[Point]] = []
-        self.start: Point
-        self.goal: Point
         self.generate_field()
+        self.start: Point = self.map[0][0]
+        self.goal: Point = self.map[self.height - 1][self.width - 1]
         self.cell_width, self.cell_height = None, None
-        # self.generate_walls()
-        self.set_path_coords()
+        self.generate_walls()
+        # self.set_path_coords()
         self.is_path_found = False
         self.search_area: list[PathPoint] = [PathPoint(self.start, 0)]
         self.worked_points: list[PathPoint] = []
@@ -97,22 +105,20 @@ class Maze:
         self.goal = Point(goal_row, goal_col)
 
     def generate_walls(self):
+        matrix_right_borders, matrix_down_borders = generate_labyrinth(self.width // 2, self.height // 2)
+        print(matrix_right_borders)
         for row in range(self.height):
             for col in range(self.width):
-                res = random.random()
-                if res < self.wall_chance:
-                    offset = [0, 0]
-                    direction = None
-                    if min(col + 1, self.width - col) < min(row + 1, self.height - row):
-                        direction = [0, int((col - self.width / 2) / abs(col - self.width / 2))]
-                    elif min(col + 1, self.width - col) > min(row + 1, self.height - row):
-                        direction = [int((row - self.height / 2) / abs(row - self.height / 2)), 0]
-                    if direction is not None:
-                        looking = Point(row + offset[0] + direction[0], col + offset[1] + direction[1])
-                        while self.is_point_inbounds(looking):
-                            self.map[looking.row][looking.col].markers = [Marker.wall]
-                            offset[0], offset[1] = offset[0] + direction[0], offset[1] + direction[1]
-                            looking = Point(row + offset[0] + direction[0], col + offset[1] + direction[1])
+                if row == 0:
+                    self.map[row][col].markers = [Marker.wall]
+                    continue
+                if col == 0:
+                    self.map[row][col].markers = [Marker.wall]
+                    continue
+                if col % 2 == 0 and matrix_right_borders[(row - 1) // 2][(col - 1) // 2]:
+                    self.map[row][col].markers = [Marker.wall]
+                if row % 2 == 0 and matrix_down_borders[(row - 1) // 2][(col - 1) // 2]:
+                    self.map[row][col].markers = [Marker.wall]
 
     def generate_field(self):
         for row in range(self.height):
