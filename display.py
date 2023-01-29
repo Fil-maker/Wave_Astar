@@ -33,7 +33,7 @@ def main():
     maze = Maze(2 * WIDTH + 1, 2 * HEIGHT + 1)
     obj = ScreenObject(20, 20, 560, 560, maze)
     size = width, height = 800, 600
-    FPS = 60
+    FPS = 20
     time_to_frame = 1000 / FPS
     running = True
     pygame.init()
@@ -61,8 +61,8 @@ def main():
         pygame.draw.rect(DISPLAY, (0, 0, 0), (20, 20, 560, 560))
         obj.draw(DISPLAY, (20, 20, 560, 560))
         borya_color = (235, 235, 235)
-        (235, 235, 235)
         maze.draw_on_screen(DISPLAY, borya_color, (20, 20, 560, 560))
+        maze.find_path()
         pygame.display.flip()
         clock.tick(FPS)
 

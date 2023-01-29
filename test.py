@@ -32,7 +32,7 @@ class Point:
     def __str__(self):
         return f"{self.row},{self.col}({'.'.join([str(m) for m in self.markers])})"
 
-    def get_neighbors(self) -> list:
+    def get_neighbors(self) -> list[Point]:
         neighbors: list[Point] = []
         for d_row in range(-1, 2):
             for d_col in range(-1, 2):
@@ -76,11 +76,11 @@ class Maze:
             self.width += 1
         self.map: list[list[Point]] = []
         self.generate_field()
-        self.start: Point = self.map[0][0]
-        self.goal: Point = self.map[self.height - 1][self.width - 1]
+        self.start: Point = None
+        self.goal: Point = None
         self.cell_width, self.cell_height = None, None
         self.generate_walls()
-        # self.set_path_coords()
+        self.set_path_coords()
         self.is_path_found = False
         self.search_area: list[PathPoint] = [PathPoint(self.start, 0)]
         self.worked_points: list[PathPoint] = []
@@ -101,12 +101,11 @@ class Maze:
             goal_row, goal_col = random.randint(0, len(self.map) - 1), random.randint(0, len(self.map[0]) - 1)
         self.map[start_row][start_col].markers.append(Marker.start)
         self.map[goal_row][goal_col].markers.append(Marker.goal)
-        self.start = Point(start_row, start_row)
+        self.start = Point(start_row, start_col)
         self.goal = Point(goal_row, goal_col)
 
     def generate_walls(self):
         matrix_right_borders, matrix_down_borders = generate_labyrinth(self.width // 2, self.height // 2)
-        print(matrix_right_borders)
         for row in range(self.height):
             for col in range(self.width):
                 if row == 0:
@@ -194,7 +193,6 @@ class Maze:
                     is_possible = False
             if is_possible:
                 if n == self.goal:
-                    print(closest.length + 1)
                     self.finish(PathPoint(n, closest.length + 1, closest))
                 else:
                     self.search_area.append(PathPoint(n, closest.length + 1, closest))
@@ -207,14 +205,14 @@ class Maze:
         self.search_area.remove(closest)
 
     def finish(self, track: PathPoint):
+        self.is_path_found = True
         while track is not None:
-            print(track.point)
             track = track.parent
 
 
 # print(get_closest(get_neighbors(Point(0, 0)), Point(0, -2)), sep='\n')
 if __name__ == '__main__':
-    f = Maze(3, 3)
+    f = Maze(5, 5)
     f.draw_cell(Point(0, 0))
     for r in f.map:
         for c in r:
