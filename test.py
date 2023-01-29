@@ -5,6 +5,12 @@ from enum import Enum
 from eller_algorithm import generate_labyrinth
 
 
+def add_colors(color1: tuple[int, int, int], color2: tuple[int, int, int], subtract: bool = False) -> tuple[int, int, int]:
+    if subtract:
+        color2 = (-color2[0], -color2[1], -color2[2])
+    return color1[0] + color2[0], color1[1] + color2[1], color1[2] + color2[2]
+
+
 class Marker(Enum):
     empty = 0
     wall = 1
@@ -14,6 +20,7 @@ class Marker(Enum):
     confirmed = 5
     wrong = 6
     current_closest = 7
+    custom = 100
 
     def __str__(self):
         return str(self.name)
@@ -23,6 +30,7 @@ class Point:
     def __init__(self, row, col, markers: list[Marker] = []):
         self.row, self.col = row, col
         self.markers = markers
+        self.color: tuple[int, int, int] = None
 
     def get_manh_distance(self, goal):
         return abs(goal.row - self.row) + abs(goal.col - self.col)
@@ -43,6 +51,12 @@ class Point:
 
     def add_marker(self, marker: Marker) -> None:
         self.markers.append(marker)
+
+    def set_color(self, color: tuple[int, int, int]) -> None:
+        if Marker.custom in self.markers:
+            self.color = color
+        else:
+            raise TypeError
 
 
 class PathPoint:
@@ -67,9 +81,11 @@ def get_closest(points: list[PathPoint], goal: Point) -> PathPoint:
 
 
 class Maze:
-    def __init__(self, height, width, wall_chance=0.2): # height and width should be ONLY odd
+    def __init__(self, height, width, wall_chance=0.2):  # height and width should be ONLY odd
         self.last_changed = None
         self.margin = 1
+        self.start_color = (0x00, 0xF2, 0x60)
+        self.end_color = (0x05, 0x75, 0xE6)
         self.height, self.width, self.wall_chance = height, width, wall_chance
         if self.height % 2 == 0:
             self.height += 1
@@ -86,7 +102,7 @@ class Maze:
         self.generate_walls()
         self.set_path_coords()
         self.is_path_found = False
-        self.path_complete: bool = False # it means that the self.path variable contains full path
+        self.path_complete: bool = False  # it means that the self.path variable contains full path
         self.search_area: list[PathPoint] = [PathPoint(self.start, 0)]
         self.worked_points: list[PathPoint] = []
 
@@ -138,12 +154,14 @@ class Maze:
         for row in range(len(self.map)):
             for col in range(len(self.map[row])):
                 pick = color
-                if Marker.wrong in self.map[row][col].markers:
-                    pick = (255, 0, 255)
+                if Marker.custom in self.map[row][col].markers:
+                    pick = self.map[row][col].color
                 elif Marker.start in self.map[row][col].markers:
                     pick = (255, 0, 0)
                 elif Marker.goal in self.map[row][col].markers:
                     pick = (0, 255, 0)
+                elif Marker.wrong in self.map[row][col].markers:
+                    pick = (255, 0, 255)
                 elif Marker.confirmed in self.map[row][col].markers:
                     pick = (0, 255, 255)
                 elif Marker.current_closest in self.map[row][col].markers:
@@ -189,6 +207,8 @@ class Maze:
             self.find_path()
         elif not self.path_complete:
             self.backtrack_path()
+        else:
+            self.shift_gradient()
 
     def find_path(self):
         if self.closest is not None:
@@ -222,6 +242,16 @@ class Maze:
         self.worked_points.append(closest)
         self.search_area.remove(closest)
 
+    def apply_gradient_first_time(self):
+        path_length = len(self.path)
+        change = add_colors(self.end_color, self.start_color, True)
+        change = change[0] // path_length, change[1] // path_length, change[2] // path_length
+        current_color = self.start_color
+        for point in self.path:
+            point.markers.append(Marker.custom)
+            point.set_color(current_color)
+            current_color = add_colors(current_color, change)
+
     def backtrack_path(self):
         if self.last_track_point is not None:
             self.get_point(self.last_track_point.point).markers.append(Marker.confirmed)
@@ -229,6 +259,12 @@ class Maze:
             self.last_track_point = self.last_track_point.parent
         else:
             self.path_complete = True
+            self.apply_gradient_first_time()
+
+    def shift_gradient(self):
+        last_color = self.path[-1].color
+        for point in self.path:
+            last_color, point.color = point.color, last_color
 
 
 # print(get_closest(get_neighbors(Point(0, 0)), Point(0, -2)), sep='\n')
