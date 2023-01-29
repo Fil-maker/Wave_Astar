@@ -5,7 +5,8 @@ from enum import Enum
 from eller_algorithm import generate_labyrinth
 
 
-def add_colors(color1: tuple[int, int, int], color2: tuple[int, int, int], subtract: bool = False) -> tuple[int, int, int]:
+def add_colors(color1: tuple[int, int, int], color2: tuple[int, int, int], subtract: bool = False) -> tuple[
+    int, int, int]:
     if subtract:
         color2 = (-color2[0], -color2[1], -color2[2])
     return color1[0] + color2[0], color1[1] + color2[1], color1[2] + color2[2]
@@ -114,8 +115,8 @@ class Maze:
         return 0 <= point.row < self.height and 0 <= point.col < self.width
 
     def set_path_coords(self):
-        start_row, start_col = 0, 0
-        goal_row, goal_col = len(self.map) - 1, len(self.map[0]) - 1
+        start_row, start_col = self.height // 2, 0
+        goal_row, goal_col = self.height // 2, len(self.map[0]) - 1
         while Marker.wall in self.map[start_row][start_col].markers \
                 or Marker.wall in self.map[goal_row][goal_col].markers \
                 or (start_row == goal_row and start_col == goal_col):
@@ -193,15 +194,16 @@ class Maze:
         self.last_changed = point
 
     def catch_click(self, local_click, actions):
-        pr_col = (local_click[0] - self.margin) / (self.cell_width + self.margin)
-        pr_row = (local_click[1] - self.margin) / (self.cell_height + self.margin)
-        margin_part = self.margin / (self.cell_height + self.margin)
-        if int(pr_col) <= pr_col <= int(pr_col + 1) - margin_part \
-                and int(pr_row) <= pr_row <= int(pr_row + 1) - margin_part:
-            if actions[0] == 1:
-                self.draw_cell(Point(int(pr_row), int(pr_col)))
-            elif actions[2] == 1:
-                self.clear_cell(Point(int(pr_row), int(pr_col)))
+        if not self.working:
+            pr_col = (local_click[0] - self.margin) / (self.cell_width + self.margin)
+            pr_row = (local_click[1] - self.margin) / (self.cell_height + self.margin)
+            margin_part = self.margin / (self.cell_height + self.margin)
+            if int(pr_col) <= pr_col <= int(pr_col + 1) - margin_part \
+                    and int(pr_row) <= pr_row <= int(pr_row + 1) - margin_part:
+                if actions[0] == 1:
+                    self.draw_cell(Point(int(pr_row), int(pr_col)))
+                elif actions[2] == 1:
+                    self.clear_cell(Point(int(pr_row), int(pr_col)))
 
     def next_step(self):
         if self.working:
@@ -267,6 +269,38 @@ class Maze:
         last_color = self.path[-1].color
         for point in self.path:
             last_color, point.color = point.color, last_color
+
+    def clear_pathpoint_list(self, cur_list: list[PathPoint]) -> None:
+        for pathpoint in cur_list:
+            cur_point = self.get_point(pathpoint.point)
+            if Marker.goal in cur_point.markers:
+                cur_point.markers = [Marker.goal]
+            elif Marker.start in cur_point.markers:
+                cur_point.markers = [Marker.start]
+            else:
+                cur_point.markers = [Marker.empty]
+
+    def clear_point_list(self, cur_list: list[Point]) -> None:
+        for point in cur_list:
+            cur_point = self.get_point(point)
+            if Marker.goal in cur_point.markers:
+                cur_point.markers = [Marker.goal]
+            elif Marker.start in cur_point.markers:
+                cur_point.markers = [Marker.start]
+            else:
+                cur_point.markers = [Marker.empty]
+
+    def clear_path(self):
+        self.working = False
+        self.closest = None
+        self.is_path_found = False
+        self.path_complete = False
+        self.clear_pathpoint_list(self.search_area)
+        self.search_area = [PathPoint(self.start, 0)]
+        self.clear_pathpoint_list(self.worked_points)
+        self.worked_points = []
+        self.clear_point_list(self.path)
+        self.path = []
 
 
 # print(get_closest(get_neighbors(Point(0, 0)), Point(0, -2)), sep='\n')

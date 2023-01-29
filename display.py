@@ -57,6 +57,8 @@ def main():
                 hold = False
             if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 maze.working = True
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RSHIFT:
+                maze.clear_path()
         paint(DISPLAY, size)
         pygame.draw.rect(DISPLAY, (0, 0, 0), (20, 20, 560, 560))
         obj.draw(DISPLAY, (20, 20, 560, 560))
