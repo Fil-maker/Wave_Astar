@@ -1,6 +1,5 @@
 import pygame
-
-from test import Maze, Point
+from test import Maze, Point, Marker
 
 WHITE = (255, 255, 255)
 BLUE = (0, 0, 255)
@@ -28,7 +27,7 @@ def paint(screen: pygame.Surface, objects):
 
 
 def main():
-    maze = Maze(20, 20)
+    maze = Maze(5, 5)
     obj = ScreenObject(20, 20, 560, 560, maze)
     size = width, height = 800, 600
     FPS = 60
@@ -53,10 +52,14 @@ def main():
                 obj.catch_click(event.pos, event.buttons)
             if event.type == pygame.MOUSEBUTTONUP:
                 hold = False
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                maze.find_path()
         paint(DISPLAY, size)
         pygame.draw.rect(DISPLAY, (0, 0, 0), (20, 20, 560, 560))
         obj.draw(DISPLAY, (20, 20, 560, 560))
-        maze.draw_on_screen(DISPLAY, (235, 235, 235), (20, 20, 560, 560))
+        borya_color = (235, 235, 235)
+        (235, 235, 235)
+        maze.draw_on_screen(DISPLAY, borya_color, (20, 20, 560, 560))
         pygame.display.flip()
         clock.tick(FPS)
 

@@ -1,13 +1,17 @@
+from __future__ import annotations
 import pygame
 import random
 from enum import Enum
 
 
 class Marker(Enum):
-    path = 0
+    empty = 0
     wall = 1
     start = 2
     goal = 3
+    path = 4
+    confirmed = 5
+    wrong = 6
 
     def __str__(self):
         return str(self.name)
@@ -36,33 +40,47 @@ class Point:
         return neighbors
 
 
-def get_closest(points: list[Point], goal: Point) -> Point:
+class PathPoint:
+    def __init__(self, point: Point, val: int, parent: PathPoint = None):
+        self.point = point
+        self.length = val
+        self.parent = parent
+
+    def __eq__(self, other):
+        return self.point == other.point
+
+
+def get_closest(points: list[PathPoint], goal: Point) -> PathPoint:
     min_distance = None
     closest = None
     for point in points:
-        cur_distance = point.get_manh_distance(goal)
-        if min_distance is None or cur_distance < min_distance:
+        cur_distance = point.point.get_manh_distance(goal)
+        if min_distance is None or cur_distance + point.length < min_distance:
             closest = point
+            min_distance = point.length + cur_distance
     return closest
 
 
 class Maze:
     def __init__(self, height, width, wall_chance=0.2):
         self.last_changed = None
-        self.margin = 2
+        self.margin = 1
         self.height, self.width, self.wall_chance = height, width, wall_chance
         self.map: list[list[Point]] = []
-        self.start = None
-        self.goal = None
+        self.start: Point
+        self.goal: Point
         self.generate_field()
-        self.generate_walls()
-        self.set_path_coords()
         self.cell_width, self.cell_height = None, None
+        # self.generate_walls()
+        self.set_path_coords()
+        self.is_path_found = False
+        self.search_area: list[PathPoint] = [PathPoint(self.start, 0)]
+        self.worked_points: list[PathPoint] = []
 
     def get_point(self, point: Point):
         return self.map[point.row][point.col]
 
-    def point_inbounds(self, point: Point):
+    def is_point_inbounds(self, point: Point):
         return 0 <= point.row < self.height and 0 <= point.col < self.width
 
     def set_path_coords(self):
@@ -91,7 +109,7 @@ class Maze:
                         direction = [int((row - self.height / 2) / abs(row - self.height / 2)), 0]
                     if direction is not None:
                         looking = Point(row + offset[0] + direction[0], col + offset[1] + direction[1])
-                        while self.point_inbounds(looking):
+                        while self.is_point_inbounds(looking):
                             self.map[looking.row][looking.col].markers = [Marker.wall]
                             offset[0], offset[1] = offset[0] + direction[0], offset[1] + direction[1]
                             looking = Point(row + offset[0] + direction[0], col + offset[1] + direction[1])
@@ -100,7 +118,7 @@ class Maze:
         for row in range(self.height):
             self.map.append([])
             for col in range(self.width):
-                markers = [Marker.path]
+                markers = [Marker.empty]
                 self.map[-1].append(
                     Point(row, col, markers=markers))
 
@@ -110,7 +128,11 @@ class Maze:
         for row in range(len(self.map)):
             for col in range(len(self.map[row])):
                 pick = color
-                if Marker.start in self.map[row][col].markers:
+                if Marker.wrong in self.map[row][col].markers:
+                    pick = (255, 0, 255)
+                elif Marker.path in self.map[row][col].markers:
+                    pick = (255, 255, 0)
+                elif Marker.start in self.map[row][col].markers:
                     pick = (255, 0, 0)
                 elif Marker.goal in self.map[row][col].markers:
                     pick = (0, 255, 0)
@@ -123,7 +145,7 @@ class Maze:
                 ))
 
     def is_cell_drawable(self, point: Point):
-        return Marker.goal not in self.get_point(point).markers \
+        return self.is_point_inbounds(point) and Marker.goal not in self.get_point(point).markers \
                and Marker.start not in self.get_point(point).markers \
                and (self.last_changed is not None and self.last_changed != point)
 
@@ -134,7 +156,7 @@ class Maze:
 
     def clear_cell(self, point: Point):
         if self.is_cell_drawable(point):
-            self.get_point(point).markers = [Marker.path]
+            self.get_point(point).markers = [Marker.empty]
         self.last_changed = point
 
     def catch_click(self, local_click, actions):
@@ -147,6 +169,41 @@ class Maze:
                 self.draw_cell(Point(int(pr_row), int(pr_col)))
             elif actions[2] == 1:
                 self.clear_cell(Point(int(pr_row), int(pr_col)))
+
+    def find_path(self):
+        if self.is_path_found:
+            return
+
+        closest = get_closest(self.search_area, self.goal)
+        if closest is None:
+            return
+        neighbors = closest.point.get_neighbors()
+        is_successful = False
+        for n in neighbors:
+            is_possible = self.is_point_inbounds(n) and PathPoint(n, closest.length) not in self.worked_points \
+                          and Marker.wall not in self.get_point(n).markers \
+                          and Marker.start not in self.get_point(n).markers
+            for pp in self.search_area:
+                if pp.point == n:
+                    is_possible = False
+            if is_possible:
+                if n == self.goal:
+                    print(closest.length + 1)
+                    self.finish(PathPoint(n, closest.length + 1, closest))
+                else:
+                    self.search_area.append(PathPoint(n, closest.length + 1, closest))
+                    self.get_point(n).markers.append(Marker.path)
+                    is_successful = True
+        if not is_successful:
+            self.get_point(closest.point).markers.append(Marker.wrong)
+        # self.get_point(closest.point).markers.append(Marker.wrong)
+        self.worked_points.append(closest)
+        self.search_area.remove(closest)
+
+    def finish(self, track: PathPoint):
+        while track is not None:
+            print(track.point)
+            track = track.parent
 
 
 # print(get_closest(get_neighbors(Point(0, 0)), Point(0, -2)), sep='\n')
