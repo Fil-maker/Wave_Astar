@@ -135,12 +135,14 @@ class Maze:
                 pick = color
                 if Marker.wrong in self.map[row][col].markers:
                     pick = (255, 0, 255)
-                elif Marker.path in self.map[row][col].markers:
-                    pick = (255, 255, 0)
                 elif Marker.start in self.map[row][col].markers:
                     pick = (255, 0, 0)
                 elif Marker.goal in self.map[row][col].markers:
                     pick = (0, 255, 0)
+                elif Marker.confirmed in self.map[row][col].markers:
+                    pick = (0, 255, 255)
+                elif Marker.path in self.map[row][col].markers:
+                    pick = (255, 255, 0)
                 elif Marker.wall in self.map[row][col].markers:
                     pick = (0, 0, 0)
                 pygame.draw.rect(display, pick, (
@@ -207,6 +209,7 @@ class Maze:
     def finish(self, track: PathPoint):
         self.is_path_found = True
         while track is not None:
+            self.get_point(track.point).markers.append(Marker.confirmed)
             track = track.parent
 
 
