@@ -192,12 +192,12 @@ class Maze:
                 if pp.point == n:
                     is_possible = False
             if is_possible:
+                is_successful = True
                 if n == self.goal:
                     self.finish(PathPoint(n, closest.length + 1, closest))
                 else:
                     self.search_area.append(PathPoint(n, closest.length + 1, closest))
                     self.get_point(n).markers.append(Marker.path)
-                    is_successful = True
         if not is_successful:
             self.get_point(closest.point).markers.append(Marker.wrong)
         # self.get_point(closest.point).markers.append(Marker.wrong)
