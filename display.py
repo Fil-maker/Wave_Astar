@@ -33,7 +33,7 @@ def main():
     maze = Maze(2 * WIDTH + 1, 2 * HEIGHT + 1)
     obj = ScreenObject(20, 20, 560, 560, maze)
     size = width, height = 800, 600
-    FPS = 20
+    FPS = 10
     time_to_frame = 1000 / FPS
     running = True
     pygame.init()

@@ -13,6 +13,7 @@ class Marker(Enum):
     path = 4
     confirmed = 5
     wrong = 6
+    current_closest = 7
 
     def __str__(self):
         return str(self.name)
@@ -78,6 +79,7 @@ class Maze:
         self.generate_field()
         self.start: Point = None
         self.goal: Point = None
+        self.closest: Point = None
         self.cell_width, self.cell_height = None, None
         self.generate_walls()
         self.set_path_coords()
@@ -141,6 +143,8 @@ class Maze:
                     pick = (0, 255, 0)
                 elif Marker.confirmed in self.map[row][col].markers:
                     pick = (0, 255, 255)
+                elif Marker.current_closest in self.map[row][col].markers:
+                    pick = (0x6A, 0x0D, 0xAD)
                 elif Marker.path in self.map[row][col].markers:
                     pick = (255, 255, 0)
                 elif Marker.wall in self.map[row][col].markers:
@@ -180,8 +184,12 @@ class Maze:
     def find_path(self):
         if self.is_path_found:
             return
-
+        if self.closest is not None:
+            self.closest.markers.remove(Marker.current_closest)
+            pass
         closest = get_closest(self.search_area, self.goal)
+        self.closest = self.get_point(closest.point)
+        self.closest.markers.append(Marker.current_closest)
         if closest is None:
             return
         neighbors = closest.point.get_neighbors()
