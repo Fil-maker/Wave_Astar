@@ -62,7 +62,7 @@ def main():
         obj.draw(DISPLAY, (20, 20, 560, 560))
         borya_color = (235, 235, 235)
         maze.draw_on_screen(DISPLAY, borya_color, (20, 20, 560, 560))
-        maze.find_path()
+        maze.next_step()
         pygame.display.flip()
         clock.tick(FPS)
 

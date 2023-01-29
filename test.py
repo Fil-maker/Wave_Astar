@@ -80,10 +80,13 @@ class Maze:
         self.start: Point = None
         self.goal: Point = None
         self.closest: Point = None
+        self.last_track_point: PathPoint = None
+        self.path: list[Point] = []
         self.cell_width, self.cell_height = None, None
         self.generate_walls()
         self.set_path_coords()
         self.is_path_found = False
+        self.path_complete: bool = False # it means that the self.path variable contains full path
         self.search_area: list[PathPoint] = [PathPoint(self.start, 0)]
         self.worked_points: list[PathPoint] = []
 
@@ -181,9 +184,13 @@ class Maze:
             elif actions[2] == 1:
                 self.clear_cell(Point(int(pr_row), int(pr_col)))
 
+    def next_step(self):
+        if not self.is_path_found:
+            self.find_path()
+        elif not self.path_complete:
+            self.backtrack_path()
+
     def find_path(self):
-        if self.is_path_found:
-            return
         if self.closest is not None:
             self.closest.markers.remove(Marker.current_closest)
             pass
@@ -204,7 +211,8 @@ class Maze:
             if is_possible:
                 is_successful = True
                 if n == self.goal:
-                    self.finish(PathPoint(n, closest.length + 1, closest))
+                    self.is_path_found = True
+                    self.last_track_point = PathPoint(n, closest.length + 1, closest)
                 else:
                     self.search_area.append(PathPoint(n, closest.length + 1, closest))
                     self.get_point(n).markers.append(Marker.path)
@@ -214,11 +222,13 @@ class Maze:
         self.worked_points.append(closest)
         self.search_area.remove(closest)
 
-    def finish(self, track: PathPoint):
-        self.is_path_found = True
-        while track is not None:
-            self.get_point(track.point).markers.append(Marker.confirmed)
-            track = track.parent
+    def backtrack_path(self):
+        if self.last_track_point is not None:
+            self.get_point(self.last_track_point.point).markers.append(Marker.confirmed)
+            self.path.append(self.get_point(self.last_track_point.point))
+            self.last_track_point = self.last_track_point.parent
+        else:
+            self.path_complete = True
 
 
 # print(get_closest(get_neighbors(Point(0, 0)), Point(0, -2)), sep='\n')
