@@ -1,6 +1,6 @@
 pygame demo of A* pathfind algorithm
 
-![](img.png)
+![](example.gif)
 
 legend:
 
@@ -12,12 +12,6 @@ yellow - possible path <br>
 pink - dead end <br>
 gradient - shortest path<br>
 purple - current closest<br>
-
-![](img_1.png)
-
-after reaching the goal path is printed in console:
-
-![](img_2.png)
 
 ## to launch (on python 3.10):
 <li> install pygame with pip install pygame<br>
