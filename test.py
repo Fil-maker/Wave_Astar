@@ -5,7 +5,8 @@ from enum import Enum
 from eller_algorithm import generate_labyrinth
 
 
-def add_colors(color1: tuple[int, int, int], color2: tuple[int, int, int], subtract: bool = False) -> tuple[int, int, int]:
+def add_colors(color1: tuple[int, int, int], color2: tuple[int, int, int], subtract: bool = False) -> tuple[
+    int, int, int]:
     if subtract:
         color2 = (-color2[0], -color2[1], -color2[2])
     return color1[0] + color2[0], color1[1] + color2[1], color1[2] + color2[2]
@@ -83,10 +84,10 @@ def get_closest(points: list[PathPoint], goal: Point) -> PathPoint:
 class Maze:
     def __init__(self, height, width, wall_chance=0.2):  # height and width should be ONLY odd
         self.last_changed = None
-        self.margin = 1
+        self.margin = -1
         self.start_color = (0x00, 0xF2, 0x60)
         self.end_color = (0x05, 0x75, 0xE6)
-        self.working: bool = False
+        self.cell_width, self.cell_height = None, None
         self.height, self.width, self.wall_chance = height, width, wall_chance
         if self.height % 2 == 0:
             self.height += 1
@@ -97,18 +98,45 @@ class Maze:
         self.start: Point = None
         self.goal: Point = None
         self.closest: Point = None
+
         self.last_track_point: PathPoint = None
         self.path: list[Point] = []
-        self.cell_width, self.cell_height = None, None
         self.generate_walls()
         self.set_path_coords()
+
+        self.is_alternative = True
+
+        self.working: bool = False
         self.is_path_found = False
         self.path_complete: bool = False  # it means that the self.path variable contains full path
         self.search_area: list[PathPoint] = [PathPoint(self.start, 0)]
         self.worked_points: list[PathPoint] = []
 
+    def restate_solution(self):
+        self.remove_if_marker(self.start, Marker.custom)
+        self.remove_if_marker(self.goal, Marker.custom)
+        self.remove_if_marker(self.goal, Marker.confirmed)
+        self.working: bool = False
+        self.is_path_found = False
+        self.path_complete: bool = False
+        self.clear_pathfind()
+        self.search_area: list[PathPoint] = [PathPoint(self.start, 0)]
+        self.worked_points: list[PathPoint] = []
+        self.path: list[Point] = []
+        self.closest: Point = None
+
+    def change_solving(self):
+        self.working = not self.working
+
+    def change_editing(self):
+        self.is_alternative = not self.is_alternative
+
     def get_point(self, point: Point):
         return self.map[point.row][point.col]
+
+    def remove_if_marker(self, point: Point, marker: Marker):
+        if marker in self.get_point(point).markers:
+            self.get_point(point).markers.remove(marker)
 
     def is_point_inbounds(self, point: Point):
         return 0 <= point.row < self.height and 0 <= point.col < self.width
@@ -149,8 +177,25 @@ class Maze:
                 self.map[-1].append(
                     Point(row, col, markers=markers))
 
+    def rebuild(self, walls=True):
+        self.restate_solution()
+        self.working: bool = False
+        self.map = []
+        self.generate_field()
+        if walls:
+            self.generate_walls()
+        self.set_path_coords()
+        self.last_track_point: PathPoint = None
+        self.path: list[Point] = []
+        self.is_path_found = False
+        self.path_complete: bool = False  # it means that the self.path variable contains full path
+        self.search_area: list[PathPoint] = [PathPoint(self.start, 0)]
+        self.worked_points: list[PathPoint] = []
+
     def draw_on_screen(self, display: pygame.Surface, color, params):
-        self.cell_width, self.cell_height = (params[2] - self.margin * (len(self.map[0]) + 1)) / (len(self.map[0])), \
+        self.size = params[2], params[3]
+        self.cell_width, self.cell_height = (params[2] - self.margin * (len(self.map[0]) + 1)) / (
+            len(self.map[0])), \
                                             (params[3] - self.margin * (len(self.map) + 1)) / (len(self.map))
         for row in range(len(self.map)):
             for col in range(len(self.map[row])):
@@ -192,16 +237,47 @@ class Maze:
             self.get_point(point).markers = [Marker.empty]
         self.last_changed = point
 
+    def clear_pathfind(self):
+        for point in self.search_area:
+            if self.start != point.point:
+                self.get_point(point.point).markers = [Marker.empty]
+        for point in self.worked_points:
+            if self.start != point.point:
+                self.get_point(point.point).markers = [Marker.empty]
+
+    def move_start(self, point: Point):
+        if self.is_point_inbounds(point) and self.goal != point and self.start != point:
+            self.start = point
+            self.restate_solution()
+            self.get_point(point).markers = [Marker.empty, Marker.start]
+
+    def move_goal(self, point: Point):
+        if self.is_point_inbounds(point) and self.goal != point and self.start != point:
+            self.restate_solution()
+            self.remove_if_marker(self.goal, Marker.goal)
+            self.remove_if_marker(self.goal, Marker.custom)
+            self.remove_if_marker(self.start, Marker.custom)
+            self.goal = point
+            self.get_point(point).markers = [Marker.empty, Marker.goal]
+
     def catch_click(self, local_click, actions):
         pr_col = (local_click[0] - self.margin) / (self.cell_width + self.margin)
         pr_row = (local_click[1] - self.margin) / (self.cell_height + self.margin)
         margin_part = self.margin / (self.cell_height + self.margin)
         if int(pr_col) <= pr_col <= int(pr_col + 1) - margin_part \
                 and int(pr_row) <= pr_row <= int(pr_row + 1) - margin_part:
+            self.restate_solution()
             if actions[0] == 1:
-                self.draw_cell(Point(int(pr_row), int(pr_col)))
+                if self.is_alternative is False:
+                    self.draw_cell(Point(int(pr_row), int(pr_col)))
+                else:
+                    self.move_start(Point(int(pr_row), int(pr_col)))
             elif actions[2] == 1:
-                self.clear_cell(Point(int(pr_row), int(pr_col)))
+                if self.is_alternative is False:
+                    self.clear_cell(Point(int(pr_row), int(pr_col)))
+                else:
+                    # self.restate_solution()
+                    self.move_goal(Point(int(pr_row), int(pr_col)))
 
     def next_step(self):
         if self.working:
@@ -214,13 +290,12 @@ class Maze:
 
     def find_path(self):
         if self.closest is not None:
-            self.closest.markers.remove(Marker.current_closest)
-            pass
+            self.remove_if_marker(self.closest, Marker.current_closest)
         closest = get_closest(self.search_area, self.goal)
-        self.closest = self.get_point(closest.point)
-        self.closest.markers.append(Marker.current_closest)
         if closest is None:
             return
+        self.closest = self.get_point(closest.point)
+        self.closest.markers.append(Marker.current_closest)
         neighbors = closest.point.get_neighbors()
         is_successful = False
         for n in neighbors:
@@ -261,6 +336,8 @@ class Maze:
             self.last_track_point = self.last_track_point.parent
         else:
             self.path_complete = True
+            self.path = self.path[::-1]
+            self.clear_pathfind()
             self.apply_gradient_first_time()
 
     def shift_gradient(self):
