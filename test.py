@@ -142,8 +142,8 @@ class Maze:
         return 0 <= point.row < self.height and 0 <= point.col < self.width
 
     def set_path_coords(self):
-        start_row, start_col = 0, 0
-        goal_row, goal_col = len(self.map) - 1, len(self.map[0]) - 1
+        start_row, start_col = self.height // 2, 0
+        goal_row, goal_col = self.height // 2, len(self.map[0]) - 1
         while Marker.wall in self.map[start_row][start_col].markers \
                 or Marker.wall in self.map[goal_row][goal_col].markers \
                 or (start_row == goal_row and start_col == goal_col):
@@ -194,8 +194,7 @@ class Maze:
 
     def draw_on_screen(self, display: pygame.Surface, color, params):
         self.size = params[2], params[3]
-        self.cell_width, self.cell_height = (params[2] - self.margin * (len(self.map[0]) + 1)) / (
-            len(self.map[0])), \
+        self.cell_width, self.cell_height = (params[2] - self.margin * (len(self.map[0]) + 1)) / (len(self.map[0])), \
                                             (params[3] - self.margin * (len(self.map) + 1)) / (len(self.map))
         for row in range(len(self.map)):
             for col in range(len(self.map[row])):
@@ -344,6 +343,38 @@ class Maze:
         last_color = self.path[-1].color
         for point in self.path:
             last_color, point.color = point.color, last_color
+
+    def clear_pathpoint_list(self, cur_list: list[PathPoint]) -> None:
+        for pathpoint in cur_list:
+            cur_point = self.get_point(pathpoint.point)
+            if Marker.goal in cur_point.markers:
+                cur_point.markers = [Marker.goal]
+            elif Marker.start in cur_point.markers:
+                cur_point.markers = [Marker.start]
+            else:
+                cur_point.markers = [Marker.empty]
+
+    def clear_point_list(self, cur_list: list[Point]) -> None:
+        for point in cur_list:
+            cur_point = self.get_point(point)
+            if Marker.goal in cur_point.markers:
+                cur_point.markers = [Marker.goal]
+            elif Marker.start in cur_point.markers:
+                cur_point.markers = [Marker.start]
+            else:
+                cur_point.markers = [Marker.empty]
+
+    def clear_path(self):
+        self.working = False
+        self.closest = None
+        self.is_path_found = False
+        self.path_complete = False
+        self.clear_pathpoint_list(self.search_area)
+        self.search_area = [PathPoint(self.start, 0)]
+        self.clear_pathpoint_list(self.worked_points)
+        self.worked_points = []
+        self.clear_point_list(self.path)
+        self.path = []
 
 
 # print(get_closest(get_neighbors(Point(0, 0)), Point(0, -2)), sep='\n')
