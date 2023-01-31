@@ -2,6 +2,7 @@ pygame demo of A* pathfind algorithm
 
 ![](example.gif)
 
+![](img_3.png)
 legend:
 
 red - start <br>
