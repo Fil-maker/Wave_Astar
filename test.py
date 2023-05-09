@@ -1,4 +1,7 @@
 from __future__ import annotations
+
+import math
+
 import pygame
 import random
 from enum import Enum
@@ -46,7 +49,7 @@ class Point:
         neighbors: list[Point] = []
         for d_row in range(-1, 2):
             for d_col in range(-1, 2):
-                if (d_row != 0 or d_col != 0) and (abs(d_row) != 1 or abs(d_col) != 1):
+                if d_row != 0 or d_col != 0:  # and (abs(d_row) != 1 or abs(d_col) != 1)
                     neighbors.append(Point(self.row + d_row, self.col + d_col))
         return neighbors
 
@@ -61,10 +64,24 @@ class Point:
 
 
 class PathPoint:
-    def __init__(self, point: Point, val: int, parent: PathPoint = None):
+    def __init__(self, point: Point, val: float, parent: PathPoint = None, child: PathPoint = None):
         self.point = point
         self.length = val
         self.parent = parent
+        self.child = child
+        if self.parent:
+            self.parent.child = self
+
+    def change_parent(self, other: PathPoint, new_dist: float):
+        if self.parent:
+            self.parent.child = None
+        self.parent = other
+        self.change_length(self.length - new_dist)
+
+    def change_length(self, difference: float):
+        self.length -= difference
+        if self.child:
+            self.child.change_length(difference)
 
     def __eq__(self, other):
         return self.point == other.point
@@ -223,8 +240,8 @@ class Maze:
 
     def is_cell_drawable(self, point: Point):
         return self.is_point_inbounds(point) and Marker.goal not in self.get_point(point).markers \
-               and Marker.start not in self.get_point(point).markers \
-               and (self.last_changed is not None and self.last_changed != point)
+            and Marker.start not in self.get_point(point).markers \
+            and (self.last_changed is not None and self.last_changed != point)
 
     def draw_cell(self, point: Point):
         if self.is_cell_drawable(point):
@@ -297,22 +314,31 @@ class Maze:
         self.closest.markers.append(Marker.current_closest)
         neighbors = closest.point.get_neighbors()
         is_successful = False
+        is_useful = False
         for n in neighbors:
-            is_possible = self.is_point_inbounds(n) and PathPoint(n, closest.length) not in self.worked_points \
+            offset = 1
+            if abs(closest.point.row - n.row) + abs(closest.point.col - n.col) == 2:
+                offset = math.sqrt(2)
+            is_possible = self.is_point_inbounds(n) and \
+                          (PathPoint(n, closest.length) not in self.worked_points) \
                           and Marker.wall not in self.get_point(n).markers \
                           and Marker.start not in self.get_point(n).markers
             for pp in self.search_area:
                 if pp.point == n:
+                    if pp.length > closest.length + offset:
+                        pp.change_parent(closest,closest.length + offset)
+                        is_useful = True
                     is_possible = False
             if is_possible:
                 is_successful = True
                 if n == self.goal:
                     self.is_path_found = True
-                    self.last_track_point = PathPoint(n, closest.length + 1, closest)
+                    self.last_track_point = PathPoint(n, closest.length + offset, closest)
+                    print(self.last_track_point.length)
                 else:
-                    self.search_area.append(PathPoint(n, closest.length + 1, closest))
+                    self.search_area.append(PathPoint(n, closest.length + offset, closest))
                     self.get_point(n).markers.append(Marker.path)
-        if not is_successful:
+        if not is_successful and not is_useful:
             self.get_point(closest.point).markers.append(Marker.wrong)
         # self.get_point(closest.point).markers.append(Marker.wrong)
         self.worked_points.append(closest)
